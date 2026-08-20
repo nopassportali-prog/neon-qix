@@ -1,5 +1,5 @@
 /* ============================================
-   NEON QIX - Game Engine (Updated for Step 5)
+   NEON QIX - Game Engine (Updated for Step 6)
    ============================================ */
 
 class Game {
@@ -115,27 +115,22 @@ class Game {
             this.collisionCooldown -= cappedDeltaTime;
         }
 
-        // Update player
         if (this.player) {
             this.player.update(cappedDeltaTime, this.inputManager, this.territoryManager.safeAreas);
         }
 
-        // Update Qix
         if (this.qix) {
             this.qix.update(cappedDeltaTime, this.player);
         }
 
-        // Update enemies
         if (this.enemyManager) {
             this.enemyManager.update(cappedDeltaTime, this.player);
         }
 
-        // Check collisions
         if (this.collisionCooldown <= 0) {
             this.checkCollisions();
         }
 
-        // Check level completion
         if (this.levelManager && this.levelManager.isLevelComplete()) {
             this.levelManager.advanceToNextLevel();
         }
@@ -147,7 +142,6 @@ class Game {
     checkCollisions() {
         if (!this.player || !this.qix) return;
 
-        // Check Qix collision
         if (this.collisionManager.checkQixPlayerCollision(this.qix, this.player)) {
             this.onPlayerHit();
             return;
@@ -158,7 +152,6 @@ class Game {
             return;
         }
 
-        // Check enemies collision
         if (this.enemyManager && this.enemyManager.checkCollisions(this.player, this.collisionManager)) {
             this.onPlayerHit();
             return;
@@ -198,7 +191,6 @@ class Game {
         this.player.reset();
         this.qix.respawn();
         
-        // Update enemy count for new level
         if (this.enemyManager) {
             this.enemyManager.updateEnemyCount();
             this.enemyManager.reset();
@@ -255,7 +247,6 @@ class Game {
         this.gameState.areaPercentage = 0;
         this.gameState.conqueredArea = 0;
 
-        // Initialize managers
         if (!this.inputManager) {
             this.inputManager = new InputManager(this);
         }
@@ -300,6 +291,13 @@ class Game {
      */
     triggerGameOver() {
         this.isGameOver = true;
+        
+        // Save highscore
+        this.uiRenderer.storageManager.addHighscore(
+            this.gameState.score,
+            this.gameState.level,
+            this.gameState.areaPercentage
+        );
     }
 
     /**
