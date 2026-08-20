@@ -20,11 +20,11 @@ function initializeGame() {
     // Handle device orientation
     const handleOrientationChange = () => {
         if (window.innerHeight < window.innerWidth) {
-            // Landscape
+            // Landscape - show warning
             rotateWarning.classList.remove('hidden');
             if (gameInstance) gameInstance.pause();
         } else {
-            // Portrait
+            // Portrait - hide warning
             rotateWarning.classList.add('hidden');
             if (gameInstance) gameInstance.resume();
         }
@@ -33,19 +33,17 @@ function initializeGame() {
     window.addEventListener('orientationchange', handleOrientationChange);
     window.addEventListener('resize', handleOrientationChange);
     
-    // Create game instance
+    // Create and start game
     gameInstance = new Game(canvas);
+    gameInstance.start();
     
     // Initial orientation check
     handleOrientationChange();
     
-    // Start game loop
-    gameInstance.start();
-    
-    console.log('NEON QIX initialized');
+    console.log('✨ NEON QIX initialized');
 }
 
-// Prevent default touch behaviors
+// Prevent default touch behaviors on canvas
 document.addEventListener('touchmove', (e) => {
     if (e.target === document.getElementById('gameCanvas')) {
         e.preventDefault();

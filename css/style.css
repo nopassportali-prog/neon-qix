@@ -29,7 +29,6 @@ html, body {
     background-color: #000000;
 }
 
-/* Canvas */
 canvas {
     display: block;
     background-color: #000000;
@@ -70,47 +69,4 @@ canvas {
     font-size: 0.8rem;
     margin-top: 1rem;
     opacity: 0.7;
-}
-
-/* Animations */
-@keyframes neonGlow {
-    0%, 100% {
-        text-shadow: 0 0 10px rgba(0, 246, 255, 0.5);
-    }
-    50% {
-        text-shadow: 0 0 20px rgba(0, 246, 255, 0.8);
-    }
-}
-
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.5;
-    }
-}
-
-/* Mobile Optimizations */
-@media (max-width: 600px) {
-    body {
-        font-size: 14px;
-    }
-}
-
-/* Landscape Detection */
-@media (orientation: landscape) {
-    .rotate-warning {
-        display: flex;
-    }
-    
-    canvas {
-        display: none;
-    }
-}
-
-@media (orientation: portrait) {
-    .rotate-warning.hidden {
-        display: none;
-    }
 }
