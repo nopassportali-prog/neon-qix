@@ -1,5 +1,5 @@
 /* ============================================
-   NEON QIX - Game Engine (Updated for Step 4)
+   NEON QIX - Game Engine (Updated for Step 5)
    ============================================ */
 
 class Game {
@@ -24,7 +24,7 @@ class Game {
             conqueredArea: 0,
         };
 
-        this.levelRequiredArea = 65; // Will be set by LevelManager
+        this.levelRequiredArea = 65;
 
         // Playground configuration
         this.playground = {
@@ -39,6 +39,7 @@ class Game {
         this.inputManager = null;
         this.player = null;
         this.qix = null;
+        this.enemyManager = null;
         this.territoryManager = null;
         this.collisionManager = null;
         this.levelManager = null;
@@ -124,6 +125,11 @@ class Game {
             this.qix.update(cappedDeltaTime, this.player);
         }
 
+        // Update enemies
+        if (this.enemyManager) {
+            this.enemyManager.update(cappedDeltaTime, this.player);
+        }
+
         // Check collisions
         if (this.collisionCooldown <= 0) {
             this.checkCollisions();
@@ -141,12 +147,19 @@ class Game {
     checkCollisions() {
         if (!this.player || !this.qix) return;
 
+        // Check Qix collision
         if (this.collisionManager.checkQixPlayerCollision(this.qix, this.player)) {
             this.onPlayerHit();
             return;
         }
 
         if (!this.player.isDrawing && this.collisionManager.checkDirectCollision(this.qix, this.player)) {
+            this.onPlayerHit();
+            return;
+        }
+
+        // Check enemies collision
+        if (this.enemyManager && this.enemyManager.checkCollisions(this.player, this.collisionManager)) {
             this.onPlayerHit();
             return;
         }
@@ -164,6 +177,9 @@ class Game {
         } else {
             this.player.reset();
             this.qix.respawn();
+            if (this.enemyManager) {
+                this.enemyManager.reset();
+            }
         }
     }
 
@@ -171,20 +187,22 @@ class Game {
      * Advance to next level
      */
     levelUp(nextLevel) {
-        // Bonus points for level completion
         this.gameState.score += 1000;
         
-        // Load new level configuration
         this.levelManager.loadLevel(nextLevel);
         
-        // Reset game state for new level
         this.gameState.conqueredArea = 0;
         this.gameState.areaPercentage = 0;
         
-        // Reset entities
         this.territoryManager = new TerritoryManager(this);
         this.player.reset();
         this.qix.respawn();
+        
+        // Update enemy count for new level
+        if (this.enemyManager) {
+            this.enemyManager.updateEnemyCount();
+            this.enemyManager.reset();
+        }
     }
 
     /**
@@ -209,13 +227,16 @@ class Game {
                 this.qix.render(this.ctx);
             }
 
+            if (this.enemyManager) {
+                this.enemyManager.render(this.ctx);
+            }
+
             if (this.player) {
                 this.player.render(this.ctx);
             }
 
             this.uiRenderer.renderHUD();
             
-            // Render level progress
             if (this.levelManager) {
                 this.uiRenderer.renderLevelProgress(this.levelManager);
             }
@@ -248,6 +269,12 @@ class Game {
             this.levelManager = new LevelManager(this);
         } else {
             this.levelManager.loadLevel(1);
+        }
+        if (!this.enemyManager) {
+            this.enemyManager = new EnemyManager(this);
+        } else {
+            this.enemyManager.updateEnemyCount();
+            this.enemyManager.reset();
         }
         
         if (!this.player) {
