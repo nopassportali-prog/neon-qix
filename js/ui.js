@@ -1,5 +1,5 @@
 /* ============================================
-   NEON QIX - UI Renderer
+   NEON QIX - UI Renderer (Updated for Step 4)
    ============================================ */
 
 class UIRenderer {
@@ -35,6 +35,35 @@ class UIRenderer {
         // Area percentage
         ctx.fillStyle = '#9D5CFF';
         ctx.fillText(`AREA: ${this.gameState.areaPercentage.toFixed(1)}%`, ctx.canvas.width - this.padding, this.padding + 25);
+    }
+
+    /**
+     * Render level progress bar
+     */
+    renderLevelProgress(levelManager) {
+        const ctx = this.ctx;
+        const requiredArea = levelManager.getRequiredArea();
+        const progress = levelManager.getProgress();
+        
+        // Progress bar at bottom of screen
+        const barX = this.padding;
+        const barY = ctx.canvas.height - 25;
+        const barWidth = ctx.canvas.width - this.padding * 2;
+        const barHeight = 4;
+        
+        // Background bar
+        ctx.fillStyle = 'rgba(0, 246, 255, 0.1)';
+        ctx.fillRect(barX, barY, barWidth, barHeight);
+        
+        // Progress bar
+        ctx.fillStyle = '#00F6FF';
+        ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+        
+        // Progress text
+        ctx.font = `10px 'Courier New'`;
+        ctx.fillStyle = '#00F6FF';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${this.gameState.areaPercentage.toFixed(0)}% / ${requiredArea.toFixed(0)}%`, ctx.canvas.width / 2, barY - 5);
     }
 
     /**

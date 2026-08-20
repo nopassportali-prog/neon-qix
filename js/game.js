@@ -1,5 +1,5 @@
 /* ============================================
-   NEON QIX - Game Engine (Updated for Step 3)
+   NEON QIX - Game Engine (Updated for Step 4)
    ============================================ */
 
 class Game {
@@ -12,7 +12,7 @@ class Game {
         this.showStartScreen = true;
         this.animationId = null;
         this.lastFrameTime = Date.now();
-        this.collisionCooldown = 0; // Prevent multiple collisions in one frame
+        this.collisionCooldown = 0;
 
         // Game state
         this.gameState = {
@@ -23,6 +23,8 @@ class Game {
             totalArea: 0,
             conqueredArea: 0,
         };
+
+        this.levelRequiredArea = 65; // Will be set by LevelManager
 
         // Playground configuration
         this.playground = {
@@ -39,6 +41,7 @@ class Game {
         this.qix = null;
         this.territoryManager = null;
         this.collisionManager = null;
+        this.levelManager = null;
         this.uiRenderer = new UIRenderer(this.ctx, this.gameState);
 
         this.handleResize();
@@ -49,14 +52,12 @@ class Game {
      * Calculate playground based on screen size
      */
     handleResize() {
-        // Set canvas size to window size
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
 
-        // Safe area (account for notches, status bars)
         const padding = 20;
         this.playground.x = padding;
-        this.playground.y = padding + 60; // Extra space for HUD
+        this.playground.y = padding + 60;
         this.playground.width = this.canvas.width - padding * 2;
         this.playground.height = this.canvas.height - padding * 2 - 60;
         this.playground.totalPixels = this.playground.width * this.playground.height;
@@ -103,15 +104,12 @@ class Game {
     update() {
         if (this.showStartScreen || this.isGameOver) return;
 
-        // Calculate delta time
         const now = Date.now();
-        const deltaTime = (now - this.lastFrameTime) / 1000; // Convert to seconds
+        const deltaTime = (now - this.lastFrameTime) / 1000;
         this.lastFrameTime = now;
 
-        // Cap delta time to prevent huge jumps
-        const cappedDeltaTime = Math.min(deltaTime, 0.016); // Max 60 FPS
+        const cappedDeltaTime = Math.min(deltaTime, 0.016);
 
-        // Update cooldown
         if (this.collisionCooldown > 0) {
             this.collisionCooldown -= cappedDeltaTime;
         }
@@ -130,6 +128,11 @@ class Game {
         if (this.collisionCooldown <= 0) {
             this.checkCollisions();
         }
+
+        // Check level completion
+        if (this.levelManager && this.levelManager.isLevelComplete()) {
+            this.levelManager.advanceToNextLevel();
+        }
     }
 
     /**
@@ -138,13 +141,11 @@ class Game {
     checkCollisions() {
         if (!this.player || !this.qix) return;
 
-        // Check if Qix hits player's drawn line
         if (this.collisionManager.checkQixPlayerCollision(this.qix, this.player)) {
             this.onPlayerHit();
             return;
         }
 
-        // Check if Qix hits player directly (while on safe area)
         if (!this.player.isDrawing && this.collisionManager.checkDirectCollision(this.qix, this.player)) {
             this.onPlayerHit();
             return;
@@ -156,22 +157,40 @@ class Game {
      */
     onPlayerHit() {
         this.gameState.lives--;
-        this.collisionCooldown = 0.5; // Collision cooldown
+        this.collisionCooldown = 0.5;
         
         if (this.gameState.lives <= 0) {
             this.triggerGameOver();
         } else {
-            // Reset player and line
             this.player.reset();
             this.qix.respawn();
         }
     }
 
     /**
+     * Advance to next level
+     */
+    levelUp(nextLevel) {
+        // Bonus points for level completion
+        this.gameState.score += 1000;
+        
+        // Load new level configuration
+        this.levelManager.loadLevel(nextLevel);
+        
+        // Reset game state for new level
+        this.gameState.conqueredArea = 0;
+        this.gameState.areaPercentage = 0;
+        
+        // Reset entities
+        this.territoryManager = new TerritoryManager(this);
+        this.player.reset();
+        this.qix.respawn();
+    }
+
+    /**
      * Render everything
      */
     render() {
-        // Clear canvas
         this.ctx.fillStyle = '#000000';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
@@ -180,26 +199,26 @@ class Game {
         } else if (this.isGameOver) {
             this.uiRenderer.renderGameOver();
         } else {
-            // Render playground border
             this.uiRenderer.renderPlaygroundBorder(this.playground);
 
-            // Render territory
             if (this.territoryManager) {
                 this.territoryManager.render(this.ctx);
             }
 
-            // Render Qix
             if (this.qix) {
                 this.qix.render(this.ctx);
             }
 
-            // Render player
             if (this.player) {
                 this.player.render(this.ctx);
             }
 
-            // Render HUD
             this.uiRenderer.renderHUD();
+            
+            // Render level progress
+            if (this.levelManager) {
+                this.uiRenderer.renderLevelProgress(this.levelManager);
+            }
         }
     }
 
@@ -225,6 +244,12 @@ class Game {
         if (!this.collisionManager) {
             this.collisionManager = new CollisionManager(this);
         }
+        if (!this.levelManager) {
+            this.levelManager = new LevelManager(this);
+        } else {
+            this.levelManager.loadLevel(1);
+        }
+        
         if (!this.player) {
             const startX = this.playground.x + this.playground.width / 2;
             const startY = this.playground.y + this.playground.height / 2;
@@ -232,6 +257,7 @@ class Game {
         } else {
             this.player.reset();
         }
+        
         if (!this.qix) {
             this.qix = new Qix(this);
         } else {
