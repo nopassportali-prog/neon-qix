@@ -1,5 +1,5 @@
 /* ============================================
-   NEON QIX - Game Engine (Updated for Step 2)
+   NEON QIX - Game Engine (Updated for Step 3)
    ============================================ */
 
 class Game {
@@ -12,6 +12,7 @@ class Game {
         this.showStartScreen = true;
         this.animationId = null;
         this.lastFrameTime = Date.now();
+        this.collisionCooldown = 0; // Prevent multiple collisions in one frame
 
         // Game state
         this.gameState = {
@@ -35,7 +36,9 @@ class Game {
         // Managers
         this.inputManager = null;
         this.player = null;
+        this.qix = null;
         this.territoryManager = null;
+        this.collisionManager = null;
         this.uiRenderer = new UIRenderer(this.ctx, this.gameState);
 
         this.handleResize();
@@ -108,9 +111,59 @@ class Game {
         // Cap delta time to prevent huge jumps
         const cappedDeltaTime = Math.min(deltaTime, 0.016); // Max 60 FPS
 
+        // Update cooldown
+        if (this.collisionCooldown > 0) {
+            this.collisionCooldown -= cappedDeltaTime;
+        }
+
         // Update player
         if (this.player) {
             this.player.update(cappedDeltaTime, this.inputManager, this.territoryManager.safeAreas);
+        }
+
+        // Update Qix
+        if (this.qix) {
+            this.qix.update(cappedDeltaTime, this.player);
+        }
+
+        // Check collisions
+        if (this.collisionCooldown <= 0) {
+            this.checkCollisions();
+        }
+    }
+
+    /**
+     * Check all collisions
+     */
+    checkCollisions() {
+        if (!this.player || !this.qix) return;
+
+        // Check if Qix hits player's drawn line
+        if (this.collisionManager.checkQixPlayerCollision(this.qix, this.player)) {
+            this.onPlayerHit();
+            return;
+        }
+
+        // Check if Qix hits player directly (while on safe area)
+        if (!this.player.isDrawing && this.collisionManager.checkDirectCollision(this.qix, this.player)) {
+            this.onPlayerHit();
+            return;
+        }
+    }
+
+    /**
+     * Handle player getting hit
+     */
+    onPlayerHit() {
+        this.gameState.lives--;
+        this.collisionCooldown = 0.5; // Collision cooldown
+        
+        if (this.gameState.lives <= 0) {
+            this.triggerGameOver();
+        } else {
+            // Reset player and line
+            this.player.reset();
+            this.qix.respawn();
         }
     }
 
@@ -133,6 +186,11 @@ class Game {
             // Render territory
             if (this.territoryManager) {
                 this.territoryManager.render(this.ctx);
+            }
+
+            // Render Qix
+            if (this.qix) {
+                this.qix.render(this.ctx);
             }
 
             // Render player
@@ -164,6 +222,9 @@ class Game {
         if (!this.territoryManager) {
             this.territoryManager = new TerritoryManager(this);
         }
+        if (!this.collisionManager) {
+            this.collisionManager = new CollisionManager(this);
+        }
         if (!this.player) {
             const startX = this.playground.x + this.playground.width / 2;
             const startY = this.playground.y + this.playground.height / 2;
@@ -171,8 +232,14 @@ class Game {
         } else {
             this.player.reset();
         }
+        if (!this.qix) {
+            this.qix = new Qix(this);
+        } else {
+            this.qix.respawn();
+        }
 
         this.lastFrameTime = Date.now();
+        this.collisionCooldown = 0;
     }
 
     /**
