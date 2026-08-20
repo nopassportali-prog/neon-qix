@@ -1,5 +1,5 @@
 /* ============================================
-   NEON QIX - Game Engine & State Management
+   NEON QIX - Game Engine (Updated for Step 2)
    ============================================ */
 
 class Game {
@@ -11,6 +11,7 @@ class Game {
         this.isGameOver = false;
         this.showStartScreen = true;
         this.animationId = null;
+        this.lastFrameTime = Date.now();
 
         // Game state
         this.gameState = {
@@ -31,6 +32,10 @@ class Game {
             totalPixels: 0,
         };
 
+        // Managers
+        this.inputManager = null;
+        this.player = null;
+        this.territoryManager = null;
         this.uiRenderer = new UIRenderer(this.ctx, this.gameState);
 
         this.handleResize();
@@ -46,7 +51,7 @@ class Game {
         this.canvas.height = window.innerHeight;
 
         // Safe area (account for notches, status bars)
-        const padding = 40;
+        const padding = 20;
         this.playground.x = padding;
         this.playground.y = padding + 60; // Extra space for HUD
         this.playground.width = this.canvas.width - padding * 2;
@@ -93,7 +98,20 @@ class Game {
      * Update game logic
      */
     update() {
-        // Placeholder for now - will be filled in next steps
+        if (this.showStartScreen || this.isGameOver) return;
+
+        // Calculate delta time
+        const now = Date.now();
+        const deltaTime = (now - this.lastFrameTime) / 1000; // Convert to seconds
+        this.lastFrameTime = now;
+
+        // Cap delta time to prevent huge jumps
+        const cappedDeltaTime = Math.min(deltaTime, 0.016); // Max 60 FPS
+
+        // Update player
+        if (this.player) {
+            this.player.update(cappedDeltaTime, this.inputManager, this.territoryManager.safeAreas);
+        }
     }
 
     /**
@@ -112,6 +130,16 @@ class Game {
             // Render playground border
             this.uiRenderer.renderPlaygroundBorder(this.playground);
 
+            // Render territory
+            if (this.territoryManager) {
+                this.territoryManager.render(this.ctx);
+            }
+
+            // Render player
+            if (this.player) {
+                this.player.render(this.ctx);
+            }
+
             // Render HUD
             this.uiRenderer.renderHUD();
         }
@@ -127,6 +155,24 @@ class Game {
         this.gameState.level = 1;
         this.gameState.lives = 3;
         this.gameState.areaPercentage = 0;
+        this.gameState.conqueredArea = 0;
+
+        // Initialize managers
+        if (!this.inputManager) {
+            this.inputManager = new InputManager(this);
+        }
+        if (!this.territoryManager) {
+            this.territoryManager = new TerritoryManager(this);
+        }
+        if (!this.player) {
+            const startX = this.playground.x + this.playground.width / 2;
+            const startY = this.playground.y + this.playground.height / 2;
+            this.player = new Player(this, startX, startY);
+        } else {
+            this.player.reset();
+        }
+
+        this.lastFrameTime = Date.now();
     }
 
     /**
